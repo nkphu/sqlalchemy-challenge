@@ -37,6 +37,12 @@ def Home():
     """List all available api routes."""
     return (
         f"Available Routes:<br/>"
+        f"/api/v1.0/precipitation<br/>"
+        f"/api/v1.0/stations<br/>"
+        f"/api/v1.0/tobs<br/>"
+        f"/api/v1.0/start<br/>"
+        f"/api/v1.0/start/end<br/>"
+
     )
 
 
@@ -45,8 +51,7 @@ def precipitation():
     # Create our session (link) from Python to the DB
     session = Session(engine)
 
-    """Return a list of all passenger names"""
-    # Query all passengers
+    # Query date as the key and prcp
     results = session.query(Measurement.date, Measurement.prcp).all()
 
     session.close()
@@ -62,13 +67,12 @@ def stations():
     # Create our session (link) from Python to the DB
     session = Session(engine)
 
-    """Return a list of passenger data including the name, age, and sex of each passenger"""
-    # Query all passengers
+    # Query list of stations
     results = session.query(Station.station, Station.name).all()
 
     session.close()
 
-    # Create a dictionary from the row data and append to a list of all_passengers
+     # Convert list of tuples into normal list
     stations = list(np.ravel(results))
 
     return jsonify(stations)
@@ -78,34 +82,49 @@ def tobs():
     # Create our session (link) from Python to the DB
     session = Session(engine)
 
-    """Return a list of passenger data including the name, age, and sex of each passenger"""
-    # Query all passengers
+    # Query list of dates and temperature obversations of the most active station for the last year. 
     results = session.query(Measurement.date, Measurement.tobs).\
         filter(Measurement.date>="2016-08-23").all()
 
     session.close()
 
-    # Create a dictionary from the row data and append to a list of all_passengers
+     # Convert list of tuples into normal list
     tobs = list(np.ravel(results))
 
     return jsonify(tobs)
 
-@app.route("/api/v1.0/<date>")
-def dates():
-    # Create our session (link) from Python to the DB
+@app.route("/api/v1.0/<start>")
+def temp(start): 
+
     session = Session(engine)
-
-    """Return a list of passenger data including the name, age, and sex of each passenger"""
-    # Query all passengers
-    results = session.query(Measurement.date, func.avg(Measurement.tobs), func.max(Measurement.tobs), func.min(Measurement.tobs)).\
-        filer(Measurement.date>="2016-08-23").all()
-
+    
+    # Query list of TMIN, TAVG, TMAX greater or equal to the start date 
+    results = session.query(func.min(Measurement.tobs), func.avg(Measurement.tobs), func.max(Measurement.tobs)).\
+        filter(Measurement.date >= start).all()
+    
     session.close()
 
-    # Create a dictionary from the row data and append to a list of all_passengers
-    date = list(np.ravel(results))
+    Measurements = list(np.ravel(results))
 
-    return jsonify(date)
+    
+    return jsonify(Measurements)
+
+
+@app.route("/api/v1.0/<start>/<end>") 
+def calc_temps(start, end): 
+
+    session = Session(engine)
+    
+    # Query list of TMIN, TAVG, TMAX between the start date and end date inclusive. 
+    results = session.query(func.min(Measurement.tobs), func.avg(Measurement.tobs), func.max(Measurement.tobs)).\
+        filter(Measurement.date >= start).filter(Measurement.date <= end).all()
+    
+    session.close()
+
+    Measurements = list(np.ravel(results))
+
+    
+    return jsonify(Measurements)
 
 if __name__ == '__main__':
     app.run(debug=True)
